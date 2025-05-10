@@ -12,22 +12,19 @@ class EmailPreprocessor:
         try:
             nltk.data.find('tokenizers/punkt')
             nltk.data.find('corpora/stopwords')
+            nltk.data.find('tokenizers/punkt_tab')
         except LookupError:
+            print("Downloading required NLTK data...")
             nltk.download('punkt')
             nltk.download('stopwords')
+            nltk.download('punkt_tab')
+            print("NLTK data download complete")
         
         self.stop_words = set(stopwords.words('english'))
 
     def load_datasets(self):
-        # load each dataset from csv files and return as a dictionary
-        datasets = {
-            'phishing': pd.read_csv('phishing_email.csv'),
-            'enron': pd.read_csv('Enron.csv'),
-            'nigerian': pd.read_csv('Nigerian_Fraud.csv'),
-            'spam': pd.read_csv('SpamAssasin.csv'),
-            'ling': pd.read_csv('Ling.csv')
-        }
-        return datasets
+        # Only load the combined phishing_email.csv dataset
+        return {'phishing': pd.read_csv('phishing_email.csv')}
 
     def clean_text(self, text):
         # clean and preprocess text: lowercase, remove emails, urls, special chars, and stopwords
@@ -55,22 +52,30 @@ class EmailPreprocessor:
         return features
 
     def prepare_data(self):
-        # load, clean, and combine all datasets, then split into train and test sets
+        # load and process only the combined dataset
         datasets = self.load_datasets()
         processed_data = []
         for source, df in datasets.items():
-            # determine the text and label columns based on dataset structure
-            text_col = 'body' if 'body' in df.columns else 'text' if 'text' in df.columns else 'content'
-            label_col = 'label' if 'label' in df.columns else 'class' if 'class' in df.columns else 'is_phishing'
+            print(f"Processing dataset: {source}")
+            print(f"Available columns: {df.columns.tolist()}")
+            text_col = 'text_combined'
+            label_col = 'label'
+            print(f"Using columns - Text: {text_col}, Label: {label_col}")
             for _, row in df.iterrows():
-                text = str(row[text_col])
-                label = int(row[label_col])
-                cleaned_text = self.clean_text(text)  # clean the email text
-                features = self.extract_features(cleaned_text)  # extract features from text
-                features['cleaned_text'] = cleaned_text  # add cleaned text
-                features['label'] = label  # add label
-                features['source'] = source  # add source dataset name
-                processed_data.append(features)
-        final_df = pd.DataFrame(processed_data)  # create dataframe from processed data
-        train_df, test_df = train_test_split(final_df, test_size=0.2, random_state=42)  # split data
+                try:
+                    text = str(row[text_col])
+                    label = int(row[label_col])
+                    cleaned_text = self.clean_text(text)
+                    features = self.extract_features(cleaned_text)
+                    features['cleaned_text'] = cleaned_text
+                    features['label'] = label
+                    features['source'] = source
+                    processed_data.append(features)
+                except Exception as e:
+                    print(f"Error processing row in {source}: {str(e)}")
+                    continue
+        if not processed_data:
+            raise ValueError("No data was successfully processed from the combined dataset")
+        final_df = pd.DataFrame(processed_data)
+        train_df, test_df = train_test_split(final_df, test_size=0.2, random_state=42)
         return train_df, test_df 

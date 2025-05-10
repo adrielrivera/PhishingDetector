@@ -63,8 +63,8 @@ def main():
     plot_confusion_matrix(y_test, y_pred)
     # save the trained model to disk
     print("\nSaving model...")
-    detector.save_model('phishing_detector_model')
-    print("\nTraining complete! Model saved as 'phishing_detector_model'")
+    detector.save_model('phishing_detector_model.keras')
+    print("\nTraining complete! Model saved as 'phishing_detector_model.keras'")
 
 if __name__ == "__main__":
     main() 
